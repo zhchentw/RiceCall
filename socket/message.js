@@ -7,7 +7,7 @@ const { Logger, Func } = utils;
 // Database
 const DB = require('../db');
 
-const SHAKE_COOLDOWN_MS = 1000 * 60 * 30; // 30 minutes
+const SHAKE_COOLDOWN_MS = 1000 * 3; // 3 seconds
 const SHAKE_COOLDOWN_MAP = new Map();
 
 // StandardizedError
