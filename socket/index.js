@@ -200,5 +200,9 @@ module.exports = (io) => {
     socket.on('ping', async () => {
       socket.emit('pong');
     });
+    // Shake Direct Message
+    socket.on('shakeDirectMessage', async (data) =>
+      messageHandler.shakeDirectMessage(io, socket, data),
+    );
   });
 };
