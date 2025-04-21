@@ -30,6 +30,8 @@ interface DirectMessagePopupProps {
   windowRef: React.RefObject<HTMLDivElement>;
 }
 
+const SHAKE_COOLDOWN = 3000;
+
 const DirectMessagePopup: React.FC<DirectMessagePopupProps> = React.memo(
   (initialData: DirectMessagePopupProps) => {
     // Hooks
@@ -38,6 +40,7 @@ const DirectMessagePopup: React.FC<DirectMessagePopupProps> = React.memo(
 
     // Refs
     const refreshRef = useRef(false);
+    const cooldownRef = useRef(0);
 
     // States
     const [userAvatarUrl, setUserAvatarUrl] = useState<User['avatar']>(
@@ -77,6 +80,35 @@ const DirectMessagePopup: React.FC<DirectMessagePopupProps> = React.memo(
     ) => {
       if (!socket) return;
       socket.send.directMessage({ directMessage, userId, targetId });
+    };
+
+    const handleShakeDirectMessage = () => {
+      if (!socket || cooldownRef.current > 0) return;
+      socket.send.shakeDirectMessage({ userId, targetId });
+      cooldownRef.current = SHAKE_COOLDOWN;
+
+      // debounce
+      const startTime = Date.now();
+      const timer = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, SHAKE_COOLDOWN - elapsed);
+        
+        if (remaining === 0) {
+          clearInterval(timer);
+        }
+        
+        cooldownRef.current = remaining;
+      }, 100);
+
+      return () => clearInterval(timer);
+    };
+
+    const handleReceiveShake = (data: any) => {
+      // check if the current conversation
+      const {userId: senderId, targetId: receiverId} = data;
+      if (senderId && receiverId && userId === receiverId) {
+        shakeWindow();
+      }
     };
 
     const handleTargetUpdate = (data: User | null) => {
@@ -134,6 +166,7 @@ const DirectMessagePopup: React.FC<DirectMessagePopupProps> = React.memo(
 
       const eventHandlers = {
         [SocketServerEvent.ON_DIRECT_MESSAGE]: handleOnDirectMessage,
+        [SocketServerEvent.SHAKE_DIRECT_MESSAGE]: handleReceiveShake,
       };
       const unsubscribe: (() => void)[] = [];
 
@@ -242,7 +275,7 @@ const DirectMessagePopup: React.FC<DirectMessagePopupProps> = React.memo(
                   />
                   <div
                     className={`${directMessage['button']} ${directMessage['nudge']}`}
-                    onClick={() => shakeWindow()}
+                    onClick={() => handleShakeDirectMessage()}
                   />
                 </div>
                 <div className={directMessage['buttons']}>
