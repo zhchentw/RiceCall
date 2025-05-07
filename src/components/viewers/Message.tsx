@@ -9,7 +9,7 @@ import vip from '@/styles/vip.module.css';
 import MarkdownViewer from '@/components/viewers/Markdown';
 
 // Types
-import type { ChannelMessage, DirectMessage, InfoMessage } from '@/types';
+import type { ChannelMessage, DirectMessage, InfoMessage, WarnMessage, MemberEvent } from '@/types';
 
 // Providers
 import { useLanguage } from '@/providers/Language';
@@ -169,13 +169,119 @@ const InfoMessageTab: React.FC<InfoMessageTabProps> = React.memo(
 
 InfoMessageTab.displayName = 'InfoMessageTab';
 
-type MessageGroup = (DirectMessage | ChannelMessage | InfoMessage) & {
-  type: 'general' | 'info' | 'dm';
+interface WarnMessageTabProps {
+  messageGroup: WarnMessage & {
+    contents: string[];
+  };
+  forbidGuestUrl?: boolean;
+}
+
+const WarnMessageTab: React.FC<WarnMessageTabProps> = React.memo(
+  ({ messageGroup }) => {
+    const lang = useLanguage();
+    const { contents: messageContents } = messageGroup;
+
+    const getTranslatedContent = (content: string) => {
+      if (content.includes(' ')) {
+        const [key, ...params] = content.split(' ');
+        if (Object.prototype.hasOwnProperty.call(lang.tr, key)) {
+          let translatedText = lang.tr[key as keyof typeof lang.tr];
+          params.forEach((param, index) => {
+            translatedText = translatedText.replace(`{${index}}`, param);
+          });
+          return translatedText;
+        }
+      }
+      return Object.prototype.hasOwnProperty.call(lang.tr, content)
+        ? lang.tr[content as keyof typeof lang.tr]
+        : content;
+    };
+
+    return (
+      <>
+        <div className={styles['warnIcon']} />
+        <div className={styles['messageBox']}>
+          {messageContents.map((content, index) => (
+            <div key={index}>
+              <MarkdownViewer markdownText={getTranslatedContent(content)} />
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  },
+);
+
+WarnMessageTab.displayName = 'WarnMessageTab';
+
+interface MemberEventTabProps {
+  messageGroup: MemberEvent & {
+    contents: string[];
+  };
+  forbidGuestUrl?: boolean;
+}
+
+const MemberEventTab: React.FC<MemberEventTabProps> = React.memo(
+  ({ messageGroup }) => {
+    const lang = useLanguage();
+    const {
+      gender: senderGender,
+      name: senderName,
+      nickname: senderNickname,
+      contents: messageContents
+    } = messageGroup;
+
+    const getFormatContent = (content: string) => {
+      var permissionLevel, messageContent;
+      if (content.includes(':')) {
+        const params = content.split(':');
+        permissionLevel = params[0];
+        messageContent = params[1];
+      }
+      return (
+        <>
+        <div className={`${styles['header']} ${styles['eventHeader']}`}>
+          <div
+            className={`${styles['senderIcon']}
+              ${permission[senderGender]}
+              ${permission[`lv-${permissionLevel}`]
+            }`}
+          />
+          <div className={styles['username']}>
+            {permissionLevel !== '2' ? senderNickname: senderName}
+          </div>
+          <div className={styles['content']}>
+            {messageContent}
+          </div>
+        </div>
+        </>
+      );
+    };
+
+    return (
+      <>
+        <div className={styles['infoIcon']} />
+        <div className={styles['messageBox']}>
+          {messageContents.map((content, index) => (
+            <div key={index}>
+              {getFormatContent(content)}
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  },
+);
+
+MemberEventTab.displayName = 'MemberEventTab';
+
+type MessageGroup = (DirectMessage | ChannelMessage | InfoMessage | WarnMessage | MemberEvent) & {
+  type: 'general' | 'info' | 'warn' | 'event' | 'dm';
   contents: string[];
 };
 
 interface MessageViewerProps {
-  messages: DirectMessage[] | ChannelMessage[] | InfoMessage[];
+  messages: DirectMessage[] | ChannelMessage[] | InfoMessage[] | WarnMessage[] | MemberEvent[];
   forbidGuestUrl?: boolean;
 }
 
@@ -185,6 +291,7 @@ const MessageViewer: React.FC<MessageViewerProps> = React.memo(
     const sortedMessages = [...messages].sort(
       (a, b) => a.timestamp - b.timestamp,
     );
+    console.log(sortedMessages);
     const messageGroups = sortedMessages.reduce<MessageGroup[]>(
       (acc, message) => {
         const lastGroup = acc[acc.length - 1];
@@ -192,11 +299,13 @@ const MessageViewer: React.FC<MessageViewerProps> = React.memo(
         const nearTime = lastGroup && timeDiff <= 5 * 60 * 1000;
         const sameType = lastGroup && message.type === lastGroup.type;
         const isInfo = message.type === 'info';
+        const isWarn = message.type === 'warn';
+        const isEvent = message.type === 'event';
         const isGeneral = message.type === 'general';
         const isDm = message.type === 'dm';
         const sameSender =
           lastGroup &&
-          !isInfo &&
+          !isInfo && !isWarn && !isEvent &&
           ((isGeneral &&
             lastGroup.type === 'general' &&
             message.senderId === lastGroup.senderId) ||
@@ -227,7 +336,6 @@ const MessageViewer: React.FC<MessageViewerProps> = React.memo(
         block: 'end',
       });
     }, [messageGroups]);
-
     return (
       <div className={styles['messageViewerWrapper']}>
         {messageGroups.map((messageGroup, index) => {
@@ -235,6 +343,16 @@ const MessageViewer: React.FC<MessageViewerProps> = React.memo(
             <div key={index} className={styles['messageWrapper']}>
               {messageGroup.type === 'info' ? (
                 <InfoMessageTab
+                  messageGroup={messageGroup}
+                  forbidGuestUrl={forbidGuestUrl}
+                />
+              ) : messageGroup.type === 'warn' ? (
+                <WarnMessageTab
+                  messageGroup={messageGroup}
+                  forbidGuestUrl={forbidGuestUrl}
+                />
+              ) : messageGroup.type === 'event' ? (
+                <MemberEventTab
                   messageGroup={messageGroup}
                   forbidGuestUrl={forbidGuestUrl}
                 />

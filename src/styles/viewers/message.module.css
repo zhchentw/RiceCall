@@ -26,6 +26,15 @@
   background-position: center;
 }
 
+.warnIcon {
+  display: flex;
+  min-width: 12px;
+  min-height: 12px;
+  background-image: url('/channel/NT_WARNING.png');
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
 .messageBox {
   flex: 1;
   display: flex;
@@ -39,6 +48,10 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
+}
+
+.messageBox .header.eventHeader {
+  height: 1.8rem;
 }
 
 .messageBox .header .name {

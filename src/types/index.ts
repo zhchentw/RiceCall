@@ -561,7 +561,7 @@ export type Badge = {
 export type Message = {
   messageId: string;
   content: string;
-  type: 'general' | 'info' | 'dm';
+  type: 'general' | 'info' | 'warn' | 'event' | 'dm';
   timestamp: number;
 };
 
@@ -584,6 +584,15 @@ export type DirectMessage = Message &
 export type InfoMessage = Message & {
   type: 'info';
 };
+
+export type WarnMessage = Message & {
+  type: 'warn';
+};
+
+export type MemberEvent = Message &
+  ServerMember & {
+    type: 'event';
+}
 
 export type UserServerStatus = {
   recent: boolean;
